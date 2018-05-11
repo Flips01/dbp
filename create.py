@@ -4,6 +4,14 @@ import json, uuid, datetime
 def populate_dbn(client, data):
     pass
 
+def populate_active_connections(client, data):
+    TABLENAME = "Active_Connection"
+    proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_TIMESTAMP,
+        FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER])
+    for d in data:
+        dt = datetime.datetime.fromtimestamp(d["ts"])
+        response = proc.call([dt, str(d.get("srcIP", "")), str(d.get("dstIP", "")), int(d.get("srcPort", "")), int(d.get("dstPort", "")), str(d.get("srcIP", ""))])
+
 def populate_ADV_table(client, data):
     TABLENAME = "Average_Data_Volume"
     proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER])
@@ -58,6 +66,7 @@ with open ("resources/tcpdump.json", "r") as f:
     data=f.read()
     j_data = json.loads(data)
     populate_dbn(client, j_data)
+    populate_active_connections(client, j_data)
     populate_packets(client, j_data)
     populate_SYNFIN_table(client,j_data)
     populate_ip_connections(client,j_data)
