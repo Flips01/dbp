@@ -1,6 +1,6 @@
 from voltdb import FastSerializer, VoltProcedure
 import json
-
+import datetime
 def populate_dbn(client, data):
     pass
 
@@ -21,7 +21,7 @@ def populate_SYNFIN_table(client, data):
             elif d["SYN"]:
                 flag = "S"
             time = d["ts"]*1000+d["ms"]
-            response = proc.call([time//(1000*60*60), time, flag])
+            response = proc.call([datetime.datetime.fromTimestamp(time//(1000*60*60)), datetime.datetime.fromTimestamp(time), flag])
 
 
 with open ("resources/tcpdump.json", "r") as f:
@@ -29,6 +29,6 @@ with open ("resources/tcpdump.json", "r") as f:
 
     data=f.read()
     j_data = json.loads(data)
-    populate_dbn(client, j_data)
-
+    #populate_dbn(client, j_data)
+    populate_SYNFIN_table(client,j_data)
     client.close()
