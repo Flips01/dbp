@@ -28,9 +28,9 @@ def populate_active_connections(client, data):
 
 def populate_ADV_table(client, data):
     TABLENAME = "Average_Data_Volume"
-    proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER])
+    proc = VoltProcedure(client, "UpsertAverageDataVolume", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
     for d in data:
-        response = proc.call([d["srcIP"], d["dstIP"], 1, d["size"]])
+        response = proc.call([str(d["srcIP"]), str(d["dstIP"]), d["size"]])
 
 def populate_SYNFIN_table(client, data):
     TABLENAME = "SYN_FIN_RATIO"
@@ -42,8 +42,10 @@ def populate_SYNFIN_table(client, data):
                 flag = "F"
             elif d["SYN"]:
                 flag = "S"
-            time = d["ts"]+d["ms"]/10000
-            response = proc.call([datetime.datetime.fromtimestamp((time//(1000*60*60))*1000*60*60), datetime.datetime.fromtimestamp(time), flag])
+            time = d["ts"]+d["ms"]/10000.0
+            time = datetime.datetime.fromtimestamp(time)
+            hour = datetime.datetime(time.year, time.month, time.day, time.hour)
+            response = proc.call([hour, time, flag])
 
 def populate_packets(client, data):
     proc = VoltProcedure(client, "PACKET.insert", [
