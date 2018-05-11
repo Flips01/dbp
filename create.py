@@ -21,7 +21,7 @@ def populate_SYNFIN_table(client, data):
             elif d["SYN"]:
                 flag = "S"
             time = d["ts"]+d["ms"]/10000
-            response = proc.call([datetime.datetime.fromTimestamp((time//(1000*60*60))*1000*60*60), datetime.datetime.fromTimestamp(time), flag])
+            response = proc.call([datetime.datetime.fromtimestamp((time//(1000*60*60))*1000*60*60), datetime.datetime.fromtimestamp(time), flag])
 
 def populate_packets(client, data):
     proc = VoltProcedure(client, "PACKET.insert", [
