@@ -20,8 +20,8 @@ def populate_SYNFIN_table(client, data):
                 flag = "F"
             elif d["SYN"]:
                 flag = "S"
-            time = d["ts"]*1000+d["ms"]
-            response = proc.call([datetime.datetime.fromTimestamp(time//(1000*60*60)), datetime.datetime.fromTimestamp(time), flag])
+            time = d["ts"]+d["ms"]/10000
+            response = proc.call([datetime.datetime.fromTimestamp((time//(1000*60*60))*1000*60*60), datetime.datetime.fromTimestamp(time), flag])
 
 
 with open ("resources/tcpdump.json", "r") as f:
