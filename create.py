@@ -9,6 +9,6 @@ with open ("resources/tcpdump.json", "r") as f:
 
     data=f.read()
     j_data = json.loads(data)
-    populate_dbn(j_data)
+    populate_dbn(client, j_data)
 
     client.close()
