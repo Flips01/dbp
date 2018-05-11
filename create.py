@@ -1,5 +1,19 @@
 from voltdb import FastSerializer, VoltProcedure
 import json, uuid, datetime
+import re
+
+def get_wkp():
+    regex = r"[^\s]*\s*([\d]*)/[^\s]*.*"
+    regex = re.compile(regex)
+
+    ports = []
+    with open ("/etc/services", "r") as f:
+        for line in f:
+            m = regex.match(line)
+            if m:
+                ports.append(int(m.group(1)))
+    
+    return ports
 
 def populate_dbn(client, data):
     pass
@@ -46,14 +60,31 @@ def populate_packets(client, data):
             dt, flag, str(d.get("type", "")) 
         ])
 
+def populate_wkp(client, data):
+    proc = VoltProcedure(client, "WELL_KNOWN_PORTS.insert", [
+            FastSerializer.VOLTTYPE_STRING,
+            FastSerializer.VOLTTYPE_INTEGER
+        ])
+
+    wkp = get_wkp()
+    for d in data:
+        dst_port = int(d.get("dstPort", ""))
+
+        if dst_port in wkp:
+            res = proc.call([
+                str(d.get("dstIP", "")),
+                dst_port
+            ])
 
 
 with open ("resources/tcpdump.json", "r") as f:
     client = FastSerializer("192.168.58.3", 21212)
 
-    data=f.read()
+    data = f.read()
     j_data = json.loads(data)
     populate_dbn(client, j_data)
     populate_packets(client, j_data)
     populate_SYNFIN_table(client,j_data)
+    populate_wkp(client,j_data)
     client.close()
+
