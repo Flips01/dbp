@@ -28,9 +28,9 @@ def populate_active_connections(client, data):
 
 def populate_ADV_table(client, data):
     TABLENAME = "Average_Data_Volume"
-    proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER])
+    proc = VoltProcedure(client, "UpdateAVG", [FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING])
     for d in data:
-        response = proc.call([d["srcIP"], d["dstIP"], 1, d["size"]])
+        response = proc.call([d["size"],str(d["srcIP"]), str(d["dstIP"])])
 
 def populate_SYNFIN_table(client, data):
     TABLENAME = "SYN_FIN_RATIO"
@@ -96,11 +96,11 @@ with open ("resources/tcpdump.json", "r") as f:
 
     data = f.read()
     j_data = json.loads(data)
-    populate_dbn(client, j_data)
-    populate_active_connections(client, j_data)
-    populate_packets(client, j_data)
-    populate_SYNFIN_table(client,j_data)
-    populate_wkp(client,j_data)
-    populate_ip_connections(client,j_data)
+    #populate_dbn(client, j_data)
+    #populate_active_connections(client, j_data)
+    #populate_packets(client, j_data)
+    #populate_SYNFIN_table(client,j_data)
+    #populate_wkp(client,j_data)
+    #populate_ip_connections(client,j_data)
+    populate_ADV_table(client, j_data)
     client.close()
-    
