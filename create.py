@@ -98,11 +98,11 @@ with open ("resources/tcpdump.json", "r") as f:
 
     data = f.read()
     j_data = json.loads(data)
-    populate_dbn(client, j_data)
-    populate_active_connections(client, j_data)
-    populate_packets(client, j_data)
-    populate_SYNFIN_table(client,j_data)
-    populate_wkp(client,j_data)
-    populate_ip_connections(client,j_data)
+    #populate_dbn(client, j_data)
+    #populate_active_connections(client, j_data)
+    #populate_packets(client, j_data)
+    #populate_SYNFIN_table(client,j_data)
+    #populate_wkp(client,j_data)
+    #populate_ip_connections(client,j_data)
+    populate_ADV_table(client, j_data)
     client.close()
-    
