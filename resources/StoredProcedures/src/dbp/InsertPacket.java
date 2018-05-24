@@ -35,7 +35,11 @@ public class InsertPacket extends VoltProcedure {
         Timestamp hour = Timestamp.from(timeLocal.toInstant(ZoneOffset.ofHours(0)));
         voltQueueSQL(insertActiveConnections, hour.getNanos(), packetID, time, srcIP, dstIP, srcPort, dstPort, flag);
         voltQueueSQL(insertPayload, hour.getNanos(), packetID, payload);
-        voltQueueSQL(insertPortConnection, dstIP+":"+dstPort,srcIP);
+	
+        try {
+        	voltQueueSQL(insertPortConnection, dstIP+":"+dstPort,srcIP);
+	} catch(Exception e) {
+	}
 
         WKPQuery wkp = WKPQuery.getInstance();
         if(wkp.isWKP(dstPort)){
