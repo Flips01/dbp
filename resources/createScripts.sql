@@ -37,7 +37,7 @@ PARTITION TABLE Port_Connections ON COLUMN Dst_IP_Port;
 CREATE TABLE Payload(
 	Timestamp_Range INTEGER NOT NULL,
 	Connection_ID VARCHAR(50) NOT NULL,
-	Payload VARCHAR 
+	Payload VARCHAR(10240) 
 );
 
 CREATE TABLE Well_Known_Ports(
