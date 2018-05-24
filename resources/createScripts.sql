@@ -1,4 +1,4 @@
-CREATE TABLE Connections (
+CREATE OR REPLACE TABLE Connections (
 	Timestamp_Range INTEGER NOT NULL,
 	ID VARCHAR(50) NOT NULL,
 	Timestamp TIMESTAMP NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE Connections (
 );
 PARTITION TABLE Active_Connection ON COLUMN Timestamp_Range;
 
-CREATE TABLE Average_Data_Volume (
+CREATE OR REPLACE TABLE Average_Data_Volume (
 	IP_A VARCHAR(15) NOT NULL,
 	IP_B VARCHAR(15) NOT NULL,
 	Payload_Sum INTEGER DEFAULT '0' NOT NULL,
@@ -20,20 +20,20 @@ CREATE TABLE Average_Data_Volume (
 );
 PARTITION TABLE Average_Data_Volume ON COLUMN IP_A;
 
-CREATE TABLE Port_Connections (
+CREATE OR REPLACE TABLE Port_Connections (
 	Dst_IP_Port VARCHAR(20) NOT NULL,
 	Src_IP VARCHAR(15) NOT NULL,
 	CONSTRAINT IPC_PK PRIMARY KEY(Dst_IP_Port, Src_IP)
 );
 PARTITION TABLE Port_Connections ON COLUMN Dst_IP_Port;
 
-CREATE TABLE Payload(
+CREATE OR REPLACE TABLE Payload(
 	Timestamp_Range INTEGER NOT NULL,
 	Connection_ID VARCHAR(15) NOT NULL,
 	Payload VARCHAR 
 );
 
-CREATE TABLE Well_Known_Ports(
+CREATE OR REPLACE TABLE Well_Known_Ports(
 	Dst_IP VARCHAR(15) NOT NULL,
 	Dst_Port INTEGER NOT NULL
 );
