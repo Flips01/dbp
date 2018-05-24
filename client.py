@@ -28,7 +28,7 @@ def select_query():
         if qry == "exit":
             sys.exit()
 
-        client_queries._clear()
+        return qry
 
 
 while True:
