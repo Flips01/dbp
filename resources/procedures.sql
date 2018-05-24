@@ -12,7 +12,7 @@ AS
 
 
 CREATE PROCEDURE AllActiveConnections
-	PARTITITON ON TABLE Connections COLUMN Timestamp_Range
+	PARTITION ON TABLE Connections COLUMN Timestamp_Range
 AS
 	SELECT SRC_IP, SRC_PORT, DST_IP, DST_PORT
 		FROM Connections
