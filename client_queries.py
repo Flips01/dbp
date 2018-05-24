@@ -25,5 +25,26 @@ def first_query():
     client.close()
 
 
-def second_query():
+def query1():
     pass
+
+def query2():
+	pass
+
+def query3():
+	ip_str = raw_input("Enter IP in dotted Notation")
+  port_int = raw_input("Enter Port as single Number")
+	client = get_voltdb_client()
+	proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER]).call([ip_str, port_int])
+	client.close()
+
+def query4():
+	client = get_voltdb_client()
+  proc = VoltProcedure(client, "WELL_KNOWN_PORTS.select").call()
+  client.close()
+
+def query5():
+  pass
+
+def query6():
+  pass
