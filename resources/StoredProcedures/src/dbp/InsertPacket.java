@@ -33,9 +33,9 @@ public class InsertPacket extends VoltProcedure {
         timeLocal = timeLocal.minusMinutes(timeLocal.getMinute()).minusSeconds(timeLocal.getSecond()).minusNanos(timeLocal.getNano());
         //Dangerous time magic
         Timestamp hour = Timestamp.from(timeLocal.toInstant(ZoneOffset.ofHours(0)));
-        voltQueueSQL(insertActiveConnections, hour.getNanos(), packetID, time, srcIP, dstIP, srcPort, dstPort, flag);
-        voltQueueSQL(insertPayload, hour.getNanos(), packetID, payload);
-	
+
+        voltQueueSQL(insertActiveConnections, hour.getTime()/(1000*60*60), packetID, time, srcIP, dstIP, srcPort, dstPort, flag);
+        voltQueueSQL(insertPayload, hour.getTime()/(1000*60*60), packetID, payload);
         try {
         	voltQueueSQL(insertPortConnection, dstIP+":"+dstPort,srcIP);
 	} catch(Exception e) {
