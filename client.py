@@ -1,4 +1,5 @@
 import sys
+import client_queries
 
 def select_query():
     def _m():
@@ -12,29 +13,29 @@ def select_query():
         print "[6] Ratio of SYN packets to FIN packets in a given time period"
         print "[exit] Exit Program"
         print "------------------------------------"
-    
-    def _clear():
-        print("\033[H\033[J")
 
-    _clear()
+    client_queries._clear()
     while True:
         _m()
         qry = raw_input("Query selection: ")
         qry = qry.strip()
 
         if qry not in ["1", "2", "3", "4", "5", "6", "exit"]:
-            _clear()
+            client_queries._clear()
             print "Invalid Input!"
             continue
 
         if qry == "exit":
             sys.exit()
 
-        return qry
-        
+        client_queries._clear()
 
 
 while True:
     qry = select_query()
+
+    client_queries._clear()
+    if qry == "1":
+        client_queries.first_query()
 
     raw_input("Press Enter to continue")
