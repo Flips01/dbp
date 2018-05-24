@@ -39,7 +39,10 @@ public class InsertPacket extends VoltProcedure {
 
         WKPQuery wkp = WKPQuery.getInstance();
         if(wkp.isWKP(dstPort)){
-            voltQueueSQL(insertWellKnownPort, dstIP, dstPort);
+	    try {
+            	voltQueueSQL(insertWellKnownPort, dstIP, dstPort);
+	    } catch(Exception e) {
+	    }
         }
 
         voltExecuteSQL();
