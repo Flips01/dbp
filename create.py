@@ -18,6 +18,7 @@ def get_wkp():
 def populate_dbn(client, data):
     pass
 
+
 def populate_active_connections(client, data):
     TABLENAME = "Active_Connection"
     proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_TIMESTAMP,
@@ -93,7 +94,28 @@ def populate_ip_connections(client, data):
     for d in data:
         response = proc.call([str(d.get("dstIP", "")), int(d.get("dstPort", "")), str(d.get("srcIP", ""))])
 
-with open ("resources/tcpdump.json", "r") as f:
+def populateAll(client, data):
+    proc = VoltProcedure(client, "InsertPacket", [FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
+    
+    for d in data:
+        time = d["ts"]+d["ms"]/10000.0
+        time = datetime.datetime.fromtimestamp(time)
+        srcIP = str(d.get("srcIP", ""))
+        dstIP = str(d.get("dstIP", ""))
+        srcPort = int(d.get("srcPort", ""))
+        dstPort = int(d.get("dstPort", ""))
+        flag = ""
+        if d["SYN"]:
+            flag = "S"
+        if d["FIN"]:
+            flag = "F"
+        payload = str(d.get("payload", ""))
+        pType = str(d.get("dstIP", ""))
+        size = int(d.get("size",""))
+        
+        print proc.call([time, srcIP, dstIP, srcPort, dstPort, flag, payload, pType, size])
+    
+with open ("resources/tcpdump_large.json", "r") as f:
     client = FastSerializer("192.168.58.3", 21212)
 
     data = f.read()
@@ -104,5 +126,6 @@ with open ("resources/tcpdump.json", "r") as f:
     #populate_SYNFIN_table(client,j_data)
     #populate_wkp(client,j_data)
     #populate_ip_connections(client,j_data)
-    populate_ADV_table(client, j_data)
+    #populate_ADV_table(client, j_data)
+    populateAll(client, j_data)
     client.close()
