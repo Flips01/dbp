@@ -7,8 +7,9 @@ def get_voltdb_client():
 
 def _clear():
     print("\033[H\033[J")
+    pass
 
-def first_query():
+def query1():
     dt = None
     
     while not dt:
@@ -21,30 +22,35 @@ def first_query():
             print "Invalid Input-Format!"
 
     client = get_voltdb_client()
-
+    
+    proc = VoltProcedure(client, "SelectActiveConnections", [FastSerializer.VOLTTYPE_TIMESTAMP])
+    print proc.call([dt])
     client.close()
-
-
-def query1():
+    pass        
+    
+def query2():
+    print "Query 2!"
     pass
 
-def query2():
-	pass
-
 def query3():
-	ip_str = raw_input("Enter IP in dotted Notation")
-  port_int = raw_input("Enter Port as single Number")
-	client = get_voltdb_client()
-	proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER]).call([ip_str, port_int])
-	client.close()
+    ip_str = str(raw_input("Enter IP in dotted Notation: "))
+    port_int = int(raw_input("Enter Port as single Number: "))
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
+    print proc.call([ip_str, port_int])
+    client.close()
+    pass
 
 def query4():
-	client = get_voltdb_client()
-  proc = VoltProcedure(client, "WELL_KNOWN_PORTS.select").call()
-  client.close()
+    port_int = int(raw_input("Enter Port as single Number: "))
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "WELL_KNOWN_PORTS.select",[FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
+    print proc.call(["*",port_int])
+    client.close()
+    pass
 
 def query5():
-  pass
+    pass
 
 def query6():
-  pass
+    pass

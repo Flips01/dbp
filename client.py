@@ -33,18 +33,17 @@ def select_query():
 
 while True:
     qry = select_query()
-
     client_queries._clear()
     if qry == "1":
         client_queries.query1()
-		if qry == "2":
-				client_queries.query2()
-		if qry == "3":
-				client_queries.query3()				
-		if qry == "4":
-				client_queries.query4()
-		if qry == "5":
-				client_queries.query5()
-		if qry == "6":
-				client_queries.query6()
+    if qry == "2":
+        client_queries.query2()
+    if qry == "3":
+        client_queries.query3()				
+    if qry == "4":
+        client_queries.query4()
+    if qry == "5":
+        client_queries.query5()
+    if qry == "6":
+        client_queries.query6()
     raw_input("Press Enter to continue")
