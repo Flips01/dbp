@@ -1,29 +1,35 @@
 package de.hsh.importer;
 
+import de.hsh.importer.data.Package;
+import de.hsh.importer.data.Server;
+import de.hsh.importer.data.Slice;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientConfig;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.types.TimestampType;
 
 import java.io.IOException;
+import java.util.Random;
+import java.util.UUID;
 
 public class ImportWorker extends Thread {
-    private String serverHost;
-    private int serverPort;
     private DataReader reader;
     private Client dbClient;
     private boolean stopped;
     private long processedItems;
+    private Random test;
 
-    public ImportWorker(String serverHost, int serverPort, DataReader reader) {
-        this.serverHost = serverHost;
-        this.serverPort = serverPort;
-        this.reader = reader;
+    public ImportWorker(String import_file, Slice[] slices) {
+        this.reader = new DataReader(import_file, slices);
+        this.reader.start();
         this.stopped = false;
         this.processedItems = 0;
+        this.test = new Random();
     }
 
     private void initVoltdb() {
+        Server[] servers = Misc.getServersRandomOrder();
+
         Client client = null;
         ClientConfig config = null;
 
@@ -31,7 +37,10 @@ public class ImportWorker extends Thread {
         config.setTopologyChangeAware(true);
         client = ClientFactory.createClient(config);
         try {
-            client.createConnection(this.serverHost, this.serverPort);
+            for(Server server : servers) {
+                client.createConnection(server.getIp(), server.getPort());
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(-1);
@@ -50,6 +59,28 @@ public class ImportWorker extends Thread {
         this.processedItems += 1;
 
         try {
+            this.dbClient.callProcedure("CONNECTIONS.insert",
+                    this.test.nextInt(),
+                    UUID.randomUUID().toString(),
+                    new TimestampType(p.msFromEpoch()),
+                    p.getSrcIP(),
+                    p.getDstIP(),
+                    p.getSrcPort(),
+                    p.getDstPort(),
+                    p.getFlag()
+                    );
+
+            /*
+            this.dbClient.callProcedure("InsertActiveConnectionsAndPayload",
+                    new TimestampType(p.msFromEpoch()),
+                    p.getSrcIP(),
+                    p.getDstIP(),
+                    p.getSrcPort(),
+                    p.getDstPort(),
+                    p.getFlag(),
+                    p.getPayload()
+                    );
+            /*
             this.dbClient.callProcedure("InsertPacket",
                     new TimestampType(p.msFromEpoch()),
                     p.getSrcIP(),
@@ -61,6 +92,7 @@ public class ImportWorker extends Thread {
                     p.getType(),
                     p.getSize()
             );
+            */
         }catch (Exception e) {
             //e.printStackTrace();
             //System.exit(-1);
@@ -70,7 +102,7 @@ public class ImportWorker extends Thread {
     public void run(){
         this.initVoltdb();
 
-        while(!this.stopped) {
+        while(!this.stopped || this.reader.isFinished()) {
             Package[] batch = this.reader.getBatch();
             for(Package p : batch) {
                 this.handlePackage(p);

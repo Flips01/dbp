@@ -1,4 +1,4 @@
-package de.hsh.importer;
+package de.hsh.importer.data;
 import lombok.Data;
 
 import java.util.Date;

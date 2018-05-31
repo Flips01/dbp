@@ -11,20 +11,26 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
+import de.hsh.importer.data.Package;
+import de.hsh.importer.data.Slice;
 
 public class DataReader extends Thread {
     private int batchSize;
     private String file;
+    private Slice[] slices;
     private final BlockingQueue<Package[]> workQueue;
     private final ArrayList<Package> queueBuffer;
+    private boolean isFinished;
 
     //private BlockingQueue<>
-    public DataReader(String file) {
-        this(file, 25, 250);
+    public DataReader(String file, Slice[] slices) {
+        this(file, slices, 25, 250);
     }
 
-    public DataReader(String file, int batchSize, int queueMaxSize) {
+    public DataReader(String file, Slice[] slices, int batchSize, int queueMaxSize) {
+        this.isFinished = false;
         this.file = file;
+        this.slices = slices;
         this.batchSize = batchSize;
         this.workQueue = new LinkedBlockingQueue<Package[]>(queueMaxSize);
         this.queueBuffer = new ArrayList<Package>();
@@ -49,24 +55,43 @@ public class DataReader extends Thread {
     }
 
     public void run(){
+        this.isFinished = false;
+        int current_slice = 0;
+        long itemIndex = 0;
+
         try {
             JsonReader reader = new JsonReader(new FileReader(this.file));
             Gson gson = new GsonBuilder().create();
 
+
             reader.beginArray();
             while (reader.hasNext()) {
+                // Slices berücksichtigen!
+                Slice s = this.slices[current_slice];
+                if(itemIndex >= s.getEnd()) {
+                    current_slice++;
+                    if(current_slice >= this.slices.length)
+                        break;
+                    s = this.slices[current_slice];
+                }
+                if(itemIndex < s.getStart()) {
+                    reader.skipValue();
+                    itemIndex++;
+                    continue;
+                }
+
                 Package p = gson.fromJson(reader, Package.class);
                 this.buffer(p);
+                itemIndex++;
             }
             this.flushBuffer();
 
             reader.close();
-        } catch (UnsupportedEncodingException ex) {
-
-        } catch (IOException ex) {
         }
+        catch (UnsupportedEncodingException ex) { }
+        catch (IOException ex) { }
 
-        System.out.println("thread is running...");
+        this.isFinished = true;
     }
 
     public int queuedItems() {
@@ -78,5 +103,9 @@ public class DataReader extends Thread {
             return this.workQueue.take();
         } catch (InterruptedException e) { }
         return new Package[]{};
+    }
+
+    public boolean isFinished() {
+        return isFinished && this.queuedItems() == 0;
     }
 }
