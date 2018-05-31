@@ -7,44 +7,74 @@ def get_voltdb_client():
 
 def _clear():
     print("\033[H\033[J")
+    pass
 
-def first_query():
-    dt = None
+def query1():
+    dt = getCorrectDate("Enter Time [DD.MM.YYYY HH:MM]: ")
+
+    client = get_voltdb_client()
     
+    proc = VoltProcedure(client, "SelectActiveConnections", [FastSerializer.VOLTTYPE_TIMESTAMP])
+    print proc.call([dt])
+    client.close()
+    pass        
+    
+def query2():
+    print "Retrieve the average data volume for all connections between IP a.b.c.d and IP w.x.y.z"
+    ip_A = str(raw_input("Enter IP a.b.c.d in dotted Notation: "))
+    ip_B = str(raw_input("Enter IP w.x.y.z in dotted Notation: "))
+
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "SelectAverageDataVolume", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING])
+    print proc.call([ip_A, ip_B])
+    pass
+
+def query3():
+    ip_str = str(raw_input("Enter IP in dotted Notation: "))
+    port_int = int(raw_input("Enter Port as single Number: "))
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
+    print proc.call([ip_str, port_int])
+    client.close()
+    pass
+
+def query4():
+    port_int = int(raw_input("Enter Port as single Number: "))
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "WELL_KNOWN_PORTS.select",[FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
+    print proc.call(["*",port_int])
+    client.close()
+    pass
+
+def query5():
+    #All packets that contain a given byte sequence
+
+    sequence = raw_input("Enter byte sequence: ")
+
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "SelectByteSequence",[FastSerializer.VOLTTYPE_STRING])
+    print proc.call([sequence])
+    client.close()
+
+def query6():
+
+    startTime = getCorrectDate("Enter Start Time [DD.MM.YYYY HH:MM]: ")
+    endTime = getCorrectDate("Enter End Time [DD.MM.YYYY HH:MM]: ")
+
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "SynFinRatio",[FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
+    print proc.call([startTime,endTime])
+    client.close()
+
+def getCorrectDate(msg):
+    dt = None
+
     while not dt:
-        d_str = raw_input("Enter Date [DD.MM.YYYY HH:MM]: ")
-        
+        d_str = raw_input(msg)
+
         try:
             dt = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
         except:
             _clear()
             print "Invalid Input-Format!"
-
-    client = get_voltdb_client()
-
-    client.close()
-
-
-def query1():
-    pass
-
-def query2():
-	pass
-
-def query3():
-	ip_str = raw_input("Enter IP in dotted Notation")
-  port_int = raw_input("Enter Port as single Number")
-	client = get_voltdb_client()
-	proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER]).call([ip_str, port_int])
-	client.close()
-
-def query4():
-	client = get_voltdb_client()
-  proc = VoltProcedure(client, "WELL_KNOWN_PORTS.select").call()
-  client.close()
-
-def query5():
-  pass
-
-def query6():
-  pass
+    return dt
