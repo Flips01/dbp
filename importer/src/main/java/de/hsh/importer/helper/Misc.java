@@ -1,4 +1,4 @@
-package de.hsh.importer;
+package de.hsh.importer.helper;
 
 import de.hsh.importer.data.Server;
 import de.hsh.importer.data.Slice;
@@ -44,5 +44,10 @@ public class Misc {
         ArrayList<Server> serverAL = new ArrayList<Server>(Arrays.asList(server));
         Collections.shuffle(serverAL);
         return serverAL.toArray(new Server[server.length]);
+    }
+
+    public static int partitionTs(int ts, int partitionInterval) {
+        int p = ts / partitionInterval;
+        return p*partitionInterval;
     }
 }

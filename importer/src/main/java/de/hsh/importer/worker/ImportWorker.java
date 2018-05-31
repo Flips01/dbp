@@ -1,15 +1,17 @@
-package de.hsh.importer;
+package de.hsh.importer.worker;
 
+import de.hsh.importer.DataReader;
+import de.hsh.importer.helper.Misc;
 import de.hsh.importer.data.Package;
 import de.hsh.importer.data.Server;
 import de.hsh.importer.data.Slice;
+import de.hsh.importer.helper.WKPQuery;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientConfig;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.types.TimestampType;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.UUID;
 
 public class ImportWorker extends Thread {
@@ -17,14 +19,15 @@ public class ImportWorker extends Thread {
     private Client dbClient;
     private boolean stopped;
     private long processedItems;
-    private Random test;
+
+    private QueryCounter qCounter;
 
     public ImportWorker(String import_file, Slice[] slices) {
         this.reader = new DataReader(import_file, slices);
         this.reader.start();
         this.stopped = false;
         this.processedItems = 0;
-        this.test = new Random();
+        this.qCounter = new QueryCounter();
     }
 
     private void initVoltdb() {
@@ -59,40 +62,45 @@ public class ImportWorker extends Thread {
         this.processedItems += 1;
 
         try {
-            this.dbClient.callProcedure("CONNECTIONS.insert",
-                    this.test.nextInt(),
-                    UUID.randomUUID().toString(),
-                    new TimestampType(p.msFromEpoch()),
-                    p.getSrcIP(),
-                    p.getDstIP(),
-                    p.getSrcPort(),
-                    p.getDstPort(),
-                    p.getFlag()
-                    );
+            TimestampType tst = new TimestampType(p.msFromEpoch());
 
-            /*
-            this.dbClient.callProcedure("InsertActiveConnectionsAndPayload",
-                    new TimestampType(p.msFromEpoch()),
-                    p.getSrcIP(),
-                    p.getDstIP(),
-                    p.getSrcPort(),
-                    p.getDstPort(),
-                    p.getFlag(),
-                    p.getPayload()
-                    );
-            /*
-            this.dbClient.callProcedure("InsertPacket",
-                    new TimestampType(p.msFromEpoch()),
-                    p.getSrcIP(),
-                    p.getDstIP(),
-                    p.getSrcPort(),
-                    p.getDstPort(),
-                    p.getFlag(),
-                    p.getPayload(),
-                    p.getType(),
-                    p.getSize()
+            String connectionID = UUID.randomUUID().toString();
+            int partitionKey = Misc.partitionTs(p.getTs(), 1800);
+
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter), "CONNECTIONS.insert",
+                partitionKey,
+                connectionID,
+                new TimestampType(p.msFromEpoch()),
+                p.getSrcIP(),
+                p.getDstIP(),
+                p.getSrcPort(),
+                p.getDstPort(),
+                p.getFlag()
             );
-            */
+
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"PAYLOAD.insert",
+                    partitionKey,
+                    connectionID,
+                    p.getPayload()
+            );
+
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"PORT_CONNECTIONS.insert",
+                    p.getDstPort(),
+                    p.getSrcIP()
+            );
+
+            if(WKPQuery.getInstance().isWKP(p.getDstPort())) {
+                this.dbClient.callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
+                        p.getDstIP(),
+                        p.getDstPort()
+                );
+            }
+
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
+                    p.getDstPort(),
+                    p.getSrcIP()
+            );
+
         }catch (Exception e) {
             //e.printStackTrace();
             //System.exit(-1);
@@ -119,5 +127,25 @@ public class ImportWorker extends Thread {
 
     public long getProcessedItems() {
         return this.processedItems;
+    }
+
+    public long getQueueItemsCount(){
+        return this.reader.queuedItems();
+    }
+
+    public long getCompletedQueries() {
+        return this.qCounter.getQueriesCompleted();
+    }
+
+    public long getIssuedQueries() {
+        return this.qCounter.getQueriesIssued();
+    }
+
+    public double getQueryCompletionRate() {
+        return this.qCounter.getCompletionRate()*100;
+    }
+
+    public boolean isRunning() {
+        return this.isAlive() || this.getQueueItemsCount() > 0 || this.getQueryCompletionRate() != 1;
     }
 }
