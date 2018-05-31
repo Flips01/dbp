@@ -14,10 +14,10 @@ RRetrieve the ratio of SYN packets to FIN packets in a given time period
 public class SynFinRatio extends VoltProcedure{
 
     public final SQLStmt getCount = new SQLStmt(
-            "SELECT COUNT(Flag) Occurrence, Flag"
-				+"FROM Connections"
-				+"WHERE Timestamp_Range = ? AND"
-				+"Timestamp BETWEEN '?' AND '?'"
+            "SELECT COUNT(Flag) Occurrence, Flag "
+				+"FROM Connections "
+				+"WHERE Timestamp_Range = ? AND "
+				+"Timestamp BETWEEN ? AND ? "
 				+"Group By Flag;");
 
     public VoltTable run(Timestamp startTime, Timestamp endTime) throws VoltAbortException{
