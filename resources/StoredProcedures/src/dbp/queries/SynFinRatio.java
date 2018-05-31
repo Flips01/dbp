@@ -44,12 +44,12 @@ public class SynFinRatio extends VoltProcedure{
 			}
         }
 
-        VoltTable result = new VoltTable(new VoltTable.ColumnInfo("SynFinRatio", VoltType.FLOAT));
+        VoltTable result = new VoltTable(new VoltTable.ColumnInfo("SynFinRatio", VoltType.FLOAT), new VoltTable.ColumnInfo("startHour",VoltType.INTEGER), new VoltTable.ColumnInfo("endHour",VoltType.INTEGER));
 
         if(finCount > 0){
-			result.addRow(synCount/(float)finCount);
+			result.addRow(synCount/(float)finCount, startHour, endHour);
 		}else{
-			result.addRow((float)synCount);
+			result.addRow((float)synCount, startHour, endHour);
 		}
 
 		return result;
