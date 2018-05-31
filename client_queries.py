@@ -50,7 +50,40 @@ def query4():
     pass
 
 def query5():
-    pass
+    #All packets that contain a given byte sequence
+
+    sequence = raw_input("Enter byte sequence: ")
+
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "SelectByteSequence",[FastSerializer.VOLTTYPE_STRING])
+    print proc.call([sequence])
+    client.close()
 
 def query6():
-    pass
+
+    startTime = None
+    endTime = None
+
+    while not startTime:
+        d_str = raw_input("Enter Start Time [DD.MM.YYYY HH:MM]: ")
+
+        try:
+            startTime = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
+        except:
+            _clear()
+            print "Invalid Input-Format!"
+
+    while not endTime:
+        d_str = raw_input("Enter End Time [DD.MM.YYYY HH:MM]: ")
+
+        try:
+            endTime = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
+        except:
+            _clear()
+            print "Invalid Input-Format!"
+
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "SynFinRatio",[FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
+    print proc.call([startTime,endTime])
+    client.close()
+
