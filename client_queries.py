@@ -10,16 +10,7 @@ def _clear():
     pass
 
 def query1():
-    dt = None
-    
-    while not dt:
-        d_str = raw_input("Enter Date [DD.MM.YYYY HH:MM]: ")
-        
-        try:
-            dt = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
-        except:
-            _clear()
-            print "Invalid Input-Format!"
+    dt = getCorrectDate("Enter Time [DD.MM.YYYY HH:MM]: ")
 
     client = get_voltdb_client()
     
@@ -67,29 +58,23 @@ def query5():
 
 def query6():
 
-    startTime = None
-    endTime = None
-
-    while not startTime:
-        d_str = raw_input("Enter Start Time [DD.MM.YYYY HH:MM]: ")
-
-        try:
-            startTime = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
-        except:
-            _clear()
-            print "Invalid Input-Format!"
-
-    while not endTime:
-        d_str = raw_input("Enter End Time [DD.MM.YYYY HH:MM]: ")
-
-        try:
-            endTime = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
-        except:
-            _clear()
-            print "Invalid Input-Format!"
+    startTime = getCorrectDate("Enter Start Time [DD.MM.YYYY HH:MM]: ")
+    endTime = getCorrectDate("Enter End Time [DD.MM.YYYY HH:MM]: ")
 
     client = get_voltdb_client()
     proc = VoltProcedure(client, "SynFinRatio",[FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
     print proc.call([startTime,endTime])
     client.close()
 
+def getCorrectDate(msg):
+    dt = None
+
+    while not dt:
+        d_str = raw_input(msg)
+
+        try:
+            dt = datetime.datetime.strptime(d_str, "%d.%m.%Y %H:%M")
+        except:
+            _clear()
+            print "Invalid Input-Format!"
+    return dt
