@@ -1,125 +1,155 @@
-from voltdb import FastSerializer, VoltProcedure
-import json, uuid, datetime
-import re
+import datetime, threading, math, time, itertools
+from Queue import Queue
 
-def get_wkp():
-    regex = r"[^\s]*\s*([\d]*)/[^\s]*.*"
-    regex = re.compile(regex)
+try:
+    import ijson.backends.yajl2 as ijson
+except ImportError:
+    import ijson
 
-    ports = []
-    with open ("/etc/services", "r") as f:
-        for line in f:
-            m = regex.match(line)
-            if m:
-                ports.append(int(m.group(1)))
-    
-    return ports
+SERVERS = ["192.168.58.2","192.168.58.3","192.168.58.4","192.168.58.5"]
 
-def populate_dbn(client, data):
-    pass
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
 
+class JsonDataReader(threading.Thread):
+    def __init__(self, file, batch_size=10, q_maxsize=250):
+        super(JsonDataReader, self).__init__()
+        self.file = file
+        self.batch_size = batch_size
+        self.queue = Queue(q_maxsize)
+        self.finished = False
 
-def populate_active_connections(client, data):
-    TABLENAME = "Active_Connection"
-    proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_TIMESTAMP,
-        FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER])
-    for d in data:
-        dt = datetime.datetime.fromtimestamp(d["ts"])
-        response = proc.call([dt, str(d.get("srcIP", "")), str(d.get("dstIP", "")), int(d.get("srcPort", "")), int(d.get("dstPort", "")), str(d.get("srcIP", ""))])
+    def is_finished(self):
+        return self.finished
 
-def populate_ADV_table(client, data):
-    TABLENAME = "Average_Data_Volume"
-    proc = VoltProcedure(client, "UpsertAverageDataVolume", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
-    for d in data:
-        response = proc.call([str(d["srcIP"]), str(d["dstIP"]), d["size"]])
+    def get_queue(self):
+        return self.queue
 
-def populate_SYNFIN_table(client, data):
-    TABLENAME = "SYN_FIN_RATIO"
-    proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_STRING])
-    for d in data:
-        if d["FIN"] or d["SYN"]:
-            flag = ""
-            if d["FIN"]:
-                flag = "F"
-            elif d["SYN"]:
-                flag = "S"
-            time = d["ts"]+d["ms"]/10000.0
-            time = datetime.datetime.fromtimestamp(time)
-            hour = datetime.datetime(time.year, time.month, time.day, time.hour)
-            response = proc.call([hour, time, flag])
+    def run(self):
+        with open(self.file, "r") as f:
+            packets = ijson.items(f, 'item')
 
-def populate_packets(client, data):
-    proc = VoltProcedure(client, "PACKET.insert", [
-            FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING,
-            FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER,
-            FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_STRING,
-            FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_STRING,
-            FastSerializer.VOLTTYPE_STRING
-        ])
+            batch = []
+            for packet in packets:
+                batch.append(packet)
 
-    for d in data:
+                if len(batch) == self.batch_size:
+                    self.queue.put(batch)
+                    batch = []
+
+            if len(batch) > 0:
+                self.queue.put(batch)
+        self.finished = True
+
+class ImportWorker(threading.Thread):
+    def __init__(self, server, datareader):
+        super(ImportWorker, self).__init__()
+        self.server = server
+        self.datareader = datareader
+        self.queue = datareader.get_queue()
+
+        self.processed_packets = 0
+
+    def init_voltdb(self):
+        from voltdb import FastSerializer, VoltProcedure
+        self.v_client = FastSerializer(self.server, 21212)
+        print "making client with %s" % self.server
+        self.v_proc = VoltProcedure(self.v_client, "InsertPacket", [FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_STRING,
+                                                      FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER,
+                                                      FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_STRING,
+                                                      FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING,
+                                                      FastSerializer.VOLTTYPE_INTEGER])
+
+    def destroy_voltdb(self):
+        self.v_client.close()
+
+    def handle_packet(self, packet):
+        time = packet["ts"] + packet["ms"] / 10000.0
+        time = datetime.datetime.fromtimestamp(time)
+        srcIP = str(packet.get("srcIP", ""))
+        dstIP = str(packet.get("dstIP", ""))
+        srcPort = packet.get("srcPort", None)
+        dstPort = packet.get("dstPort", None)
         flag = ""
-        if d["SYN"]:
-            flag = "s"
-        if d["FIN"]:
-            flag = "f"
+        if packet["SYN"]:
+            flag = "S"
+        if packet["FIN"]:
+            flag = "F"
+        payload = str(packet.get("payload", ""))
+        pType = str(packet.get("type", ""))
+        size = packet.get("size", 0)
+        self.v_proc.call([time, srcIP, dstIP, srcPort, dstPort, flag, payload, pType, size])
 
-        dt = datetime.datetime.fromtimestamp(d["ts"])
-        res = proc.call([
-            str(uuid.uuid4()), str(d.get("srcIP", "")), str(d.get("dstIP", "")),
-            int(d.get("srcPort", "")), int(d.get("dstPort", "")), str(d.get("payload", "")),
-            dt, flag, str(d.get("type", ""))
-        ])
+    def get_processed_packets(self):
+        return self.processed_packets
 
-def populate_wkp(client, data):
-    proc = VoltProcedure(client, "WELL_KNOWN_PORTS.insert", [
-            FastSerializer.VOLTTYPE_STRING,
-            FastSerializer.VOLTTYPE_INTEGER
-        ])
+    def run(self):
+        self.init_voltdb()
 
-    wkp = get_wkp()
-    for d in data:
-        dst_port = int(d.get("dstPort", ""))
+        while True:
+            batch = self.queue.get(True)
+            for packet in batch:
+                self.handle_packet(packet)
+            self.processed_packets += len(batch)
 
-        if dst_port in wkp:
-            res = proc.call([
-                str(d.get("dstIP", "")),
-                dst_port
-            ])
+        self.destroy_voltdb()
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+
+server_cycle = None
+def rr_server():
+    global server_cycle
+
+    if not server_cycle:
+        server_cycle = itertools.cycle(SERVERS)
+
+    return server_cycle.next()
+
+def clear():
+    print("\033[H\033[J")
+
+########################################################################################################################
+# RUN
+########################################################################################################################
+
+FILE = "/tmp/tcpdump.json"
+WORKER_LIMIT = 8
+WORKERS = []
+
+dr = JsonDataReader(FILE)
+dr.start()
+
+# worker starten
+for i in range(0, WORKER_LIMIT):
+    server = str(rr_server())
+    worker = ImportWorker(server, dr)
+    worker.start()
+
+    WORKERS.append(worker)
 
 
-def populate_ip_connections(client, data):
-    TABLENAME = "IP_CONNECTIONS"
-    proc = VoltProcedure(client, TABLENAME+".insert", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_STRING])
-    for d in data:
-        response = proc.call([str(d.get("dstIP", "")), int(d.get("dstPort", "")), str(d.get("srcIP", ""))])
+while True:
+    clear()
 
-def populateAll(client, data):
-    d = data
-    proc = VoltProcedure(client, "InsertPacket", [FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
+    # Wurden alle Daten eingelesen?
+    if dr.is_finished():
+        # warten bis alle items verarbeitet wurden
+        while not dr.queue.empty():
+            time.sleep(1)
+        # alle worker stoppen
+        for worker in WORKERS:
+            pass
+        break
 
-    time = d["ts"]+d["ms"]/10000.0
-    time = datetime.datetime.fromtimestamp(time)
-    srcIP = str(d.get("srcIP", ""))
-    dstIP = str(d.get("dstIP", ""))
-    srcPort = int(d.get("srcPort", ""))
-    dstPort = int(d.get("dstPort", ""))
-    flag = ""
-    if d["SYN"]:
-        flag = "S"
-    if d["FIN"]:
-        flag = "F"
-    payload = str(d.get("payload", ""))
-    pType = str(d.get("dstIP", ""))
-    size = int(d.get("size",""))
-    
-    print proc.call([time, srcIP, dstIP, srcPort, dstPort, flag, payload, pType, size])
-    
-with open ("resources/tcpdump_large.json", "r") as f:
-    client = FastSerializer("192.168.58.3", 21212)
+    print("Worker Status:")
+    print("-"*10)
+    for i in range(0, len(WORKERS)):
+        print("Worker #%s: %s" % (i, WORKERS[i].get_processed_packets()))
+    print("-" * 10)
+    print("Queued packets: %s" % dr.get_queue().qsize())
+    time.sleep(1)
 
-    objects = ijson.items(f, 'item')
-    for obj in objects:
-        populateAll(client, obj)
-
-    client.close()
+print("Imported Completed!")
