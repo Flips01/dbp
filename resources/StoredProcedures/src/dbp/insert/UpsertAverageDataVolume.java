@@ -14,6 +14,12 @@ public class UpsertAverageDataVolume extends VoltProcedure{
     public long run(String srcIP, String dstIP, int size){
         final long START_TIME = System.currentTimeMillis();
 
+        if(srcIP.compareTo(dstIP) == 1){
+            String tmp = srcIP;
+            srcIP = dstIP;
+            dstIP = tmp;
+        }
+
         voltQueueSQL(findOld, srcIP, dstIP);
         VoltTable[] results = voltExecuteSQL();
         if(results[0].getRowCount() > 0){
