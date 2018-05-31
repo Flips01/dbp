@@ -1,4 +1,4 @@
-package de.hsh.importer;
+package de.hsh.importer.helper;
 
 import de.hsh.importer.data.Server;
 import de.hsh.importer.data.Slice;

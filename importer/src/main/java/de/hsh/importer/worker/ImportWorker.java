@@ -1,8 +1,7 @@
 package de.hsh.importer.worker;
 
-import com.sun.org.glassfish.external.statistics.TimeStatistic;
 import de.hsh.importer.DataReader;
-import de.hsh.importer.Misc;
+import de.hsh.importer.helper.Misc;
 import de.hsh.importer.data.Package;
 import de.hsh.importer.data.Server;
 import de.hsh.importer.data.Slice;
@@ -13,8 +12,6 @@ import org.voltdb.client.ClientFactory;
 import org.voltdb.types.TimestampType;
 
 import java.io.IOException;
-import java.sql.Time;
-import java.util.Random;
 import java.util.UUID;
 
 public class ImportWorker extends Thread {
@@ -98,6 +95,11 @@ public class ImportWorker extends Thread {
                         p.getDstPort()
                 );
             }
+
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
+                    p.getDstPort(),
+                    p.getSrcIP()
+            );
 
         }catch (Exception e) {
             //e.printStackTrace();
