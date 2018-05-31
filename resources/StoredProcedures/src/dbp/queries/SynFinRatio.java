@@ -1,4 +1,4 @@
-package dbp;
+package dbp.queries;
 
 import org.voltdb.*;
 
