@@ -29,7 +29,13 @@ def query1():
     pass        
     
 def query2():
-    print "Query 2!"
+    print "Retrieve the average data volume for all connections between IP a.b.c.d and IP w.x.y.z"
+    ip_A = str(raw_input("Enter IP a.b.c.d in dotted Notation: "))
+    ip_B = str(raw_input("Enter IP w.x.y.z in dotted Notation: "))
+
+    client = get_voltdb_client()
+    proc = VoltProcedure(client, "SelectAverageDataVolume", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING])
+    print proc.call([ip_A, ip_B])
     pass
 
 def query3():
