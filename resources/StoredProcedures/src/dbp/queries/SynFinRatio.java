@@ -3,6 +3,8 @@ package dbp.queries;
 import org.voltdb.*;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /*
 RRetrieve the ratio of SYN packets to FIN packets in a given time period
@@ -11,42 +13,54 @@ RRetrieve the ratio of SYN packets to FIN packets in a given time period
  */
 public class SynFinRatio extends VoltProcedure{
 
-    public final SQLStmt getSynCount = new SQLStmt(
-            "SELECT Count(*)"
-            + "FROM Connections "
-            + "WHERE Flag = 's' "
-            + "AND Timestamp_Range = ? "
-            + "AND Timestamp between ? AND ?");
+    public final SQLStmt getCount = new SQLStmt(
+            "SELECT COUNT(Flag) Occurrence, Flag"
+				+"FROM Connections"
+				+"WHERE Timestamp_Range = ? AND"
+				+"Timestamp BETWEEN '?' AND '?'"
+				+"Group By Flag;");
 
-    public final SQLStmt getFinCount = new SQLStmt(
-            "SELECT Count(*)"
-            + "FROM Connections "
-            + "WHERE Flag = 'f' "
-            + "AND Timestamp_Range = ? "
-            + "AND Timestamp between ? AND ?");
+    public VoltTable run(Timestamp startTime, Timestamp endTime) throws VoltAbortException{
 
-    public long run(Timestamp startTime, Timestamp endTime) throws VoltAbortException{
-        int startHour = startTime.toLocalDateTime().getHour();
-        int endHour = endTime.toLocalDateTime().getHour();
+		long startHour = convertTimestamp(startTime);
+        long endHour = convertTimestamp(endTime);
+		
+		long queryHours = endHour-startHour;
+		
+		long synCount = 0;
+		long finCount = 0;
 
-        voltQueueSQL(getSynCount, startHour, startTime, endTime);
-        VoltTable[] synResult = voltExecuteSQL();
-        long synCount = synResult[0].fetchRow(0).getLong(0);
+		for (int i = 0; i < queryHours; ++i){
+			voltQueueSQL(getCount, startHour+i, startTime, endTime);
+        	VoltTable[] result = voltExecuteSQL();
 
-        voltQueueSQL(getFinCount, startHour, startTime, endTime);
-        VoltTable[] finResult = voltExecuteSQL();
-        long finCount = finResult[0].fetchRow(0).getLong(0);
-
-        if(startHour != endHour){
-            voltQueueSQL(getSynCount, endHour, startTime, endTime);
-            VoltTable[] result2 = voltExecuteSQL();
-            synCount += result2[0].fetchRow(0).getLong(0);
-
-            voltQueueSQL(getFinCount, endHour, startTime, endTime);
-            VoltTable[] finResult2 = voltExecuteSQL();
-            finCount += finResult2[0].fetchRow(0).getLong(0);
+			for(int j = 0; j < result[0].getRowCount(); j++) {
+				if (result[0].fetchRow(j).getString("Flag").equalsIgnoreCase("s")){
+					synCount += result[0].fetchRow(j).getLong("Occurrence");
+				}
+				if(result[0].fetchRow(j).getString("Flag").equalsIgnoreCase("f")){
+					finCount += result[0].fetchRow(j).getLong("Occurrence");
+				}
+			}
         }
 
-        return synCount/finCount;
+        VoltTable result = new VoltTable(new VoltTable.ColumnInfo("SynFinRatio", VoltType.FLOAT));
+
+        if(finCount > 0){
+			result.addRow(synCount/(float)finCount);
+		}else{
+			result.addRow((float)synCount);
+		}
+
+		return result;
     }
+
+	private long convertTimestamp(Timestamp ts){
+		LocalDateTime timeLocal = ts.toLocalDateTime();
+        timeLocal = timeLocal.minusMinutes(timeLocal.getMinute()).minusSeconds(timeLocal.getSecond()).minusNanos(timeLocal.getNano());
+        //Dangerous time magic
+        Timestamp hour = Timestamp.from(timeLocal.toInstant(ZoneOffset.ofHours(0)));
+
+		return hour.getTime()/(1000*60*60);
+	}
 }
