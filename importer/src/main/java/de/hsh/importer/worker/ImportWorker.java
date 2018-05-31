@@ -12,6 +12,7 @@ import org.voltdb.client.ClientFactory;
 import org.voltdb.types.TimestampType;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.UUID;
 
 public class ImportWorker extends Thread {
@@ -70,7 +71,7 @@ public class ImportWorker extends Thread {
             this.dbClient.callProcedure(new CounterCallback(this.qCounter), "CONNECTIONS.insert",
                 partitionKey,
                 connectionID,
-                new TimestampType(p.msFromEpoch()),
+                new TimestampType(new Date(p.msFromEpoch())),
                 p.getSrcIP(),
                 p.getDstIP(),
                 p.getSrcPort(),
@@ -97,10 +98,10 @@ public class ImportWorker extends Thread {
             }
 
             this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
-                    p.getDstPort(),
-                    p.getSrcIP()
+                p.getSrcIP(),
+                p.getDstIP(),
+                    (p.getPayload().length()/2)
             );
-
         }catch (Exception e) {
             //e.printStackTrace();
             //System.exit(-1);

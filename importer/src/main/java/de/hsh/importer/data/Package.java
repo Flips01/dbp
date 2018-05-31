@@ -19,9 +19,10 @@ public class Package {
     private int size;
 
     public long msFromEpoch() {
-        long microseconds = this.ts*1000000;
-             microseconds += this.ms;
-        return microseconds;
+        long _ms = (long)this.ts;
+            _ms = _ms*1000;
+            _ms += this.ms;
+        return _ms;
     }
 
     public String getFlag() {
