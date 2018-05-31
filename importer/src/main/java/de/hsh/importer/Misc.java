@@ -45,4 +45,9 @@ public class Misc {
         Collections.shuffle(serverAL);
         return serverAL.toArray(new Server[server.length]);
     }
+
+    public static int partitionTs(int ts, int partitionInterval) {
+        int p = ts / partitionInterval;
+        return p*partitionInterval;
+    }
 }
