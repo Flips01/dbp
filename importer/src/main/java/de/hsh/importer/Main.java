@@ -17,15 +17,16 @@ public class Main {
     }
 
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
         int workersCount = 8;
+        int avgSliceLength = 2500;
         String import_file = "/tmp/dl/outside.tcpdump.json";
 
 
         System.out.println("Indexing datafile..");
 
         DataSlicer slicer = new DataSlicer(import_file);
-        Slice[] slices = slicer.getSlicesByAvgLength(2500);
+        Slice[] slices = slicer.getSlicesByAvgLength(avgSliceLength);
         ArrayList<Slice[]> workerSlices = Misc.splitSlices(slices, workersCount);
 
         ArrayList<ImportWorker> workers = new ArrayList<ImportWorker>();
@@ -54,8 +55,6 @@ public class Main {
 
                 System.out.format("Worker #%2d: Queue: %5d Q_SENT: %10d Q_COMPLETE: %10d Q_COMPLETE: %3.2f%%\n", i, w.getQueueItemsCount(), w.getIssuedQueries(), w.getCompletedQueries(),  w.getQueryCompletionRate());
 
-
-                //System.out.println("Worker #"+i+": "+w.getProcessedItems()+" Items\t(Work Queue: "+w.getQueueItemsCount()+"\tQ_COMPLETE: "+w.getQueryCompletionRate()+"; Q_SENT: "+w.getIssuedQueries()+"; Q_COMPLETED: "+w.getCompletedQueries()+")");
                 cur_completed += w.getCompletedQueries();
                 cur_issued += w.getIssuedQueries();
             }
@@ -64,13 +63,6 @@ public class Main {
             System.out.println((cur_completed-prev_completed)+" Queries/sec");
             prev_completed = cur_completed;
             prev_issued = cur_issued;
-
-            /*
-            double percent = (double)current_inserts/slicer.getItemCount();
-            percent = percent*100;
-            System.out.println(String.format("%.2f", percent)+"% handled");
-            */
-
 
             TimeUnit.SECONDS.sleep(1);
         }

@@ -1,4 +1,5 @@
 package de.hsh.importer.data;
+import com.google.gson.annotations.SerializedName;
 import lombok.Data;
 
 import java.util.Date;
@@ -16,7 +17,8 @@ public class Package {
     private boolean SYN;
     private boolean FIN;
     private String payload;
-    private int size;
+    @SerializedName("size")
+    private int payloadSize;
 
     public long msFromEpoch() {
         long _ms = (long)this.ts;

@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 import de.hsh.importer.data.Slice;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -13,12 +14,12 @@ public class DataSlicer {
     private String file;
     private long itemCount;
 
-    public DataSlicer(String file) {
+    public DataSlicer(String file) throws IOException {
         this.file = file;
         this.init();
     }
 
-    private void init() {
+    private void init()  throws IOException {
         this.itemCount = 0;
 
         try {
@@ -34,7 +35,9 @@ public class DataSlicer {
             reader.close();
         }
         catch (UnsupportedEncodingException ex) {}
-        catch (IOException ex) {}
+        catch (IOException ex) {
+            throw ex;
+        }
         catch (Exception ex) {}
     }
 

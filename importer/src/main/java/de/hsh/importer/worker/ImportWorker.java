@@ -100,7 +100,7 @@ public class ImportWorker extends Thread {
             this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
                 p.getSrcIP(),
                 p.getDstIP(),
-                    (p.getPayload().length()/2)
+                p.getPayloadSize()
             );
         }catch (Exception e) {
             //e.printStackTrace();
