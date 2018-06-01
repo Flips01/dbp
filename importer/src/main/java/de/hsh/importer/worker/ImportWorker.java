@@ -5,6 +5,7 @@ import de.hsh.importer.helper.Misc;
 import de.hsh.importer.data.Package;
 import de.hsh.importer.data.Server;
 import de.hsh.importer.data.Slice;
+import de.hsh.importer.helper.SingleInsertManager;
 import de.hsh.importer.helper.WKPQuery;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientConfig;
@@ -22,6 +23,7 @@ public class ImportWorker extends Thread {
     private long processedItems;
 
     private QueryCounter qCounter;
+    private SingleInsertManager sInsertManager;
 
     public ImportWorker(String import_file, Slice[] slices) {
         this.reader = new DataReader(import_file, slices);
@@ -29,6 +31,7 @@ public class ImportWorker extends Thread {
         this.stopped = false;
         this.processedItems = 0;
         this.qCounter = new QueryCounter();
+        this.sInsertManager = new SingleInsertManager();
     }
 
     private void initVoltdb() {
@@ -85,17 +88,22 @@ public class ImportWorker extends Thread {
                     p.getPayload()
             );
 
-            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"PORT_CONNECTIONS.insert",
-                    p.getDstPort(),
-                    p.getSrcIP()
-            );
-
-            if(WKPQuery.getInstance().isWKP(p.getDstPort())) {
-                this.dbClient.callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
-                        p.getDstIP(),
-                        p.getDstPort()
+            if(this.sInsertManager.canInsert("PORT_CONNECTIONS.insert", p.getDstPort(), p.getSrcIP())) {
+                this.dbClient.callProcedure(new CounterCallback(this.qCounter), "PORT_CONNECTIONS.insert",
+                        p.getDstPort(),
+                        p.getSrcIP()
                 );
             }
+
+            if(WKPQuery.getInstance().isWKP(p.getDstPort())) {
+                if(this.sInsertManager.canInsert("WELL_KNOWN_PORTS.insert", p.getDstIP(), p.getDstPort())) {
+                    this.dbClient.callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
+                            p.getDstIP(),
+                            p.getDstPort()
+                    );
+                }
+            }
+
 
             this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
                 p.getSrcIP(),
@@ -103,8 +111,8 @@ public class ImportWorker extends Thread {
                 p.getPayloadSize()
             );
         }catch (Exception e) {
-            //e.printStackTrace();
-            //System.exit(-1);
+            e.printStackTrace();
+            System.exit(-1);
         }
     }
 
