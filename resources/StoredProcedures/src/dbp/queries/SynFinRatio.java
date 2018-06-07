@@ -13,6 +13,8 @@ RRetrieve the ratio of SYN packets to FIN packets in a given time period
  */
 public class SynFinRatio extends VoltProcedure{
 
+	private final int partitionInterval = 1800;
+
     public final SQLStmt getCount = new SQLStmt(
             "SELECT COUNT(Flag) Occurrence, Flag "
 				+"FROM Connections "
@@ -22,8 +24,8 @@ public class SynFinRatio extends VoltProcedure{
 
     public VoltTable run(Timestamp startTime, Timestamp endTime) throws VoltAbortException{
 
-		long startHour = convertTimestamp(startTime);
-        long endHour = convertTimestamp(endTime);
+		long startHour = partitionTs((int)startTime.getTime()/1000, partitionInterval);
+        long endHour = partitionTs((int)endTime.getTime()/1000, partitionInterval);
 		
 		long queryHours = endHour-startHour;
 		
@@ -62,5 +64,10 @@ public class SynFinRatio extends VoltProcedure{
         Timestamp hour = Timestamp.from(timeLocal.toInstant(ZoneOffset.ofHours(0)));
 
 		return hour.getTime()/(1000*60*60);
+	}
+
+	private int partitionTs(int ts, int partitionInterval) {
+		int p = ts / partitionInterval;
+		return p*partitionInterval;
 	}
 }
