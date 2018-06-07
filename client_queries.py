@@ -1,4 +1,4 @@
-import random, datetime
+import random, datetime, math, time
 from voltdb import FastSerializer, VoltProcedure
 
 def get_voltdb_client():
@@ -62,9 +62,26 @@ def query6():
     endTime = getCorrectDate("Enter End Time [DD.MM.YYYY HH:MM]: ")
 
     client = get_voltdb_client()
-    proc = VoltProcedure(client, "SynFinRatio",[FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
-    print proc.call([startTime,endTime])
+
+    partitions = partitionsInRange(dtToTs(startTime), dtToTs(endTime))
+
+    results = {"F":0, "S":0}
+
+    for partition in partitions:
+        proc = VoltProcedure(client, "SynFinRatio", [FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
+        res = proc.call([partition, startTime, endTime])
+        for elem in res.tables[0].tuples:
+            if elem[1] in results.keys():
+                results[elem[1]] += elem[0]
+
+    print "Syns: %s; Fins: %s; Ratio: %s" %(
+        results["S"], results["F"], float(results["S"]) / float(results["F"])
+    )
+
     client.close()
+
+def dtToTs(dt):
+    return time.mktime(dt.timetuple())
 
 def getCorrectDate(msg):
     dt = None
@@ -78,3 +95,25 @@ def getCorrectDate(msg):
             _clear()
             print "Invalid Input-Format!"
     return dt
+
+
+def partitionsInRange(start, end, partitionInterval = 1800):
+    start_part = partitionTs(start, partitionInterval)
+    end_part = partitionTs(end, partitionInterval)
+
+    part_range = end_part-start_part
+    partitions = math.floor((part_range/partitionInterval)+1)
+
+    parts = []
+
+    for i in range(0, int(partitions)):
+        parts.append(int(start_part + (i*partitionInterval)))
+
+    return parts
+
+
+#Converts Timestamp to Timestamp_Range
+
+def partitionTs(ts,partitionInterval):
+    p = math.floor(ts / partitionInterval)
+    return p * partitionInterval
