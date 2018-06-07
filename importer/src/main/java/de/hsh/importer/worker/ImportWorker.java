@@ -18,48 +18,21 @@ import java.util.UUID;
 
 public class ImportWorker extends Thread {
     private DataReader reader;
-    private Client dbClient;
     private boolean stopped;
     private long processedItems;
 
+    private VoltDBClient dbClient;
     private QueryCounter qCounter;
     private SingleInsertManager sInsertManager;
 
-    public ImportWorker(String import_file, Slice[] slices) {
+    public ImportWorker(String import_file, Slice[] slices, VoltDBClient dbClient) {
         this.reader = new DataReader(import_file, slices);
         this.reader.start();
         this.stopped = false;
         this.processedItems = 0;
         this.qCounter = new QueryCounter();
         this.sInsertManager = new SingleInsertManager();
-    }
-
-    private void initVoltdb() {
-        Server[] servers = Misc.getServersRandomOrder();
-
-        Client client = null;
-        ClientConfig config = null;
-
-        config = new ClientConfig("","");
-        config.setTopologyChangeAware(true);
-        client = ClientFactory.createClient(config);
-        try {
-            for(Server server : servers) {
-                client.createConnection(server.getIp(), server.getPort());
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
-
-        this.dbClient = client;
-    }
-
-    private void destroyVoltdb() {
-        try {
-            this.dbClient.close();
-        } catch (InterruptedException e) {}
+        this.dbClient = dbClient;
     }
 
     public void handlePackage(Package p) {
@@ -69,9 +42,9 @@ public class ImportWorker extends Thread {
             TimestampType tst = new TimestampType(p.msFromEpoch());
 
             String connectionID = UUID.randomUUID().toString();
-            int partitionKey = Misc.partitionTs(p.getTs(), 1800);
+            int partitionKey = Misc.partitionTs(p.getTs(), 600);
 
-            this.dbClient.callProcedure(new CounterCallback(this.qCounter), "CONNECTIONS.insert",
+            this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "CONNECTIONS.insert",
                 partitionKey,
                 connectionID,
                 new TimestampType(new Date(p.msFromEpoch())),
@@ -82,14 +55,14 @@ public class ImportWorker extends Thread {
                 p.getFlag()
             );
 
-            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"PAYLOAD.insert",
+            this.dbClient.get().callProcedure(new CounterCallback(this.qCounter),"PAYLOAD.insert",
                     partitionKey,
                     connectionID,
                     p.getPayload()
             );
 
             if(this.sInsertManager.canInsert("PORT_CONNECTIONS.insert", p.getDstPort(), p.getSrcIP())) {
-                this.dbClient.callProcedure(new CounterCallback(this.qCounter), "PORT_CONNECTIONS.insert",
+                this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "PORT_CONNECTIONS.insert",
                         p.getDstPort(),
                         p.getSrcIP()
                 );
@@ -97,15 +70,14 @@ public class ImportWorker extends Thread {
 
             if(WKPQuery.getInstance().isWKP(p.getDstPort())) {
                 if(this.sInsertManager.canInsert("WELL_KNOWN_PORTS.insert", p.getDstIP(), p.getDstPort())) {
-                    this.dbClient.callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
+                    this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
                             p.getDstIP(),
                             p.getDstPort()
                     );
                 }
             }
 
-
-            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
+            this.dbClient.get().callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
                 p.getSrcIP(),
                 p.getDstIP(),
                 p.getPayloadSize()
@@ -117,16 +89,12 @@ public class ImportWorker extends Thread {
     }
 
     public void run(){
-        this.initVoltdb();
-
         while(!this.stopped || this.reader.isFinished()) {
             Package[] batch = this.reader.getBatch();
             for(Package p : batch) {
                 this.handlePackage(p);
             }
         }
-
-        this.destroyVoltdb();
     }
 
     public void shutdown() {
