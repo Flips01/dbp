@@ -50,4 +50,18 @@ public class Misc {
         int p = ts / partitionInterval;
         return p*partitionInterval;
     }
+
+    public static int[] partitionsInRange(int start, int end, int partitionInterval) {
+        int start_part = partitionTs(start, partitionInterval);
+        int end_part = partitionTs(end, partitionInterval);
+
+        int part_range = end_part-start_part;
+        int partitions = (part_range/partitionInterval)+1;
+
+        int[] parts = new int[partitions];
+        for(int i=0; i<partitions; i++) {
+            parts[i] = start_part+ (i*partitionInterval);
+        }
+        return parts;
+    }
 }

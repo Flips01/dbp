@@ -3,6 +3,7 @@ package de.hsh.importer;
 import de.hsh.importer.data.Slice;
 import de.hsh.importer.helper.Misc;
 import de.hsh.importer.worker.ImportWorker;
+import de.hsh.importer.worker.VoltDBClient;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -31,16 +32,17 @@ public class Main {
 
         ArrayList<ImportWorker> workers = new ArrayList<ImportWorker>();
 	    for(int i=0; i<workersCount; i++) {
-            ImportWorker worker = new ImportWorker(import_file, workerSlices.get(i));
+            ImportWorker worker = new ImportWorker(import_file, workerSlices.get(i), VoltDBClient.getInstance());
             worker.start();
             workers.add(worker);
         }
 
 
+        boolean run = true;
         long prev_issued = 0;
 	    long prev_completed = 0;
 
-	    while(true) {
+	    while(run) {
 	        long cur_issued = 0;
 	        long cur_completed = 0;
 
@@ -50,6 +52,7 @@ public class Main {
             System.out.println("Worker Status:");
             System.out.println("-------------------------");
 
+            boolean hasActiveWorkers = false;
             for(int i=0; i<workers.size(); i++) {
                 ImportWorker w = workers.get(i);
 
@@ -57,14 +60,21 @@ public class Main {
 
                 cur_completed += w.getCompletedQueries();
                 cur_issued += w.getIssuedQueries();
+                if(w.isRunning()) {
+                    hasActiveWorkers = true;
+                }
             }
+            run = hasActiveWorkers;
 
             System.out.println("-------------------------");
-            System.out.println((cur_completed-prev_completed)+" Queries/sec");
+            System.out.println((cur_completed-prev_completed)/5+" Queries/sec");
             prev_completed = cur_completed;
             prev_issued = cur_issued;
 
-            TimeUnit.SECONDS.sleep(1);
+            TimeUnit.SECONDS.sleep(5);
         }
+
+        System.out.println();
+        System.out.println("Import complete...");
     }
 }

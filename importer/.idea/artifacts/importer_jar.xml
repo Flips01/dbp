@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="importer:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/importer_jar</output-path>
+    <root id="archive" name="importer.jar">
+      <element id="module-output" name="importer" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/voltdb/voltdbclient/8.0/voltdbclient-8.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/google/code/gson/gson/2.8.4/gson-2.8.4.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
