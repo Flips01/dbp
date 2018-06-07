@@ -12,12 +12,22 @@ def _clear():
 def query1():
     dt = getCorrectDate("Enter Time [DD.MM.YYYY HH:MM]: ")
 
+    dt_min = dt - datetime.timedelta(minutes=1)
+    dt_max = dt + datetime.timedelta(minutes=1)
+
     client = get_voltdb_client()
-    
-    proc = VoltProcedure(client, "SelectActiveConnections", [FastSerializer.VOLTTYPE_TIMESTAMP])
-    print proc.call([dt])
+
+    partitions = partitionsInRange(dtToTs(dt_min), dtToTs(dt_max))
+    for partition in partitions:
+        proc = VoltProcedure(client, "SelectActiveConnections", [FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
+        res = proc.call([partition, dt_min, dt_max])
+        for elem in res.tables[0].tuples:
+            print "From %s:%s To %s:%s" % (
+                elem[0],elem[1],elem[2],elem[3]
+            )
+
     client.close()
-    pass        
+
     
 def query2():
     print "Retrieve the average data volume for all connections between IP a.b.c.d and IP w.x.y.z"
