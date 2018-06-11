@@ -1,4 +1,4 @@
-import random, datetime
+import random, datetime, math, time
 from voltdb import FastSerializer, VoltProcedure
 
 def get_voltdb_client():
@@ -12,12 +12,22 @@ def _clear():
 def query1():
     dt = getCorrectDate("Enter Time [DD.MM.YYYY HH:MM]: ")
 
+    dt_min = dt - datetime.timedelta(minutes=1)
+    dt_max = dt + datetime.timedelta(minutes=1)
+
     client = get_voltdb_client()
-    
-    proc = VoltProcedure(client, "SelectActiveConnections", [FastSerializer.VOLTTYPE_TIMESTAMP])
-    print proc.call([dt])
+
+    partitions = partitionsInRange(dtToTs(dt_min), dtToTs(dt_max))
+    for partition in partitions:
+        proc = VoltProcedure(client, "SelectActiveConnections", [FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
+        res = proc.call([partition, dt_min, dt_max])
+        for elem in res.tables[0].tuples:
+            print "From %s:%s To %s:%s" % (
+                elem[0],elem[1],elem[2],elem[3]
+            )
+
     client.close()
-    pass        
+
     
 def query2():
     print "Retrieve the average data volume for all connections between IP a.b.c.d and IP w.x.y.z"
@@ -62,9 +72,30 @@ def query6():
     endTime = getCorrectDate("Enter End Time [DD.MM.YYYY HH:MM]: ")
 
     client = get_voltdb_client()
-    proc = VoltProcedure(client, "SynFinRatio",[FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
-    print proc.call([startTime,endTime])
+
+    partitions = partitionsInRange(dtToTs(startTime), dtToTs(endTime))
+
+    results = {"F":0, "S":0}
+
+    for partition in partitions:
+        proc = VoltProcedure(client, "SynFinRatio", [FastSerializer.VOLTTYPE_INTEGER, FastSerializer.VOLTTYPE_TIMESTAMP, FastSerializer.VOLTTYPE_TIMESTAMP])
+        res = proc.call([partition, startTime, endTime])
+        for elem in res.tables[0].tuples:
+            if elem[1] in results.keys():
+                results[elem[1]] += elem[0]
+
+    ratio = 0
+    if results["F"] > 0:
+        ratio = float(results["S"]) / float(results["F"])
+    
+    print "Syns: %s; Fins: %s; Ratio: %s" %(
+        results["S"], results["F"], ratio
+    )
+
     client.close()
+
+def dtToTs(dt):
+    return time.mktime(dt.timetuple())
 
 def getCorrectDate(msg):
     dt = None
@@ -78,3 +109,25 @@ def getCorrectDate(msg):
             _clear()
             print "Invalid Input-Format!"
     return dt
+
+
+def partitionsInRange(start, end, partitionInterval = 1800):
+    start_part = partitionTs(start, partitionInterval)
+    end_part = partitionTs(end, partitionInterval)
+
+    part_range = end_part-start_part
+    partitions = math.floor((part_range/partitionInterval)+1)
+
+    parts = []
+
+    for i in range(0, int(partitions)):
+        parts.append(int(start_part + (i*partitionInterval)))
+
+    return parts
+
+
+#Converts Timestamp to Timestamp_Range
+
+def partitionTs(ts,partitionInterval):
+    p = math.floor(ts / partitionInterval)
+    return p * partitionInterval
