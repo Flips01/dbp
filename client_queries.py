@@ -36,7 +36,10 @@ def query2():
 
     client = get_voltdb_client()
     proc = VoltProcedure(client, "SelectAverageDataVolume", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_STRING])
-    print proc.call([ip_A, ip_B])
+    result =  proc.call([ip_A, ip_B])
+    client.close()
+    for elem in result.tables[0].tuples:
+        print elem[0]
     pass
 
 def query3():
@@ -67,8 +70,10 @@ def query5():
 
     client = get_voltdb_client()
     proc = VoltProcedure(client, "SelectByteSequence",[FastSerializer.VOLTTYPE_STRING])
-    print proc.call([sequence])
+    result = proc.call([sequence])
     client.close()
+    for elem in result.tables[0].tuples:
+        print "Paket %s: %s\n"%(elem[1],elem[2])
 
 def query6():
 
