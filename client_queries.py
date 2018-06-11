@@ -44,16 +44,20 @@ def query3():
     port_int = int(raw_input("Enter Port as single Number: "))
     client = get_voltdb_client()
     proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
-    print proc.call([ip_str, port_int])
+    result =  proc.call([ip_str, port_int])
     client.close()
+    for elem in result.tables[0].tuples:
+        print elem
     pass
 
 def query4():
     port_int = int(raw_input("Enter Port as single Number: "))
     client = get_voltdb_client()
-    proc = VoltProcedure(client, "WELL_KNOWN_PORTS.select",[FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
-    print proc.call(["*",port_int])
+    proc = VoltProcedure(client, "@AdHoc",[FastSerializer.VOLTTYPE_STRING])
+    result = proc.call(["SELECT * FROM Well_Known_Ports where DST_PORT = %s"%port_int])
     client.close()
+    for elem in result.tables[0].tuples:
+        print elem[0]
     pass
 
 def query5():
