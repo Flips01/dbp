@@ -61,9 +61,9 @@ public class ImportWorker extends Thread {
                     p.getPayload()
             );
 
-            if(this.sInsertManager.canInsert("PORT_CONNECTIONS.insert", p.getDstPort(), p.getSrcIP())) {
+            if(this.sInsertManager.canInsert("PORT_CONNECTIONS.insert", p.getDstIP()+":"+p.getDstPort(), p.getSrcIP())) {
                 this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "PORT_CONNECTIONS.insert",
-                        p.getDstPort(),
+                        p.getDstIP()+":"+p.getDstPort(),
                         p.getSrcIP()
                 );
             }
