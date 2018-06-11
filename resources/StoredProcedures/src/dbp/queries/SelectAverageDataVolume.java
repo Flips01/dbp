@@ -12,7 +12,14 @@ public class SelectAverageDataVolume extends VoltProcedure{
         voltQueueSQL(select, IP_A, IP_B);
         VoltTable numbers = voltExecuteSQL()[0];
         VoltTable result = new VoltTable(new VoltTable.ColumnInfo("Average", VoltType.FLOAT));
-        result.addRow(numbers.fetchRow(0).getLong(0)/(float)numbers.fetchRow(0).getLong(1));
+        try{
+            final float PAYLOAD_COUNT = (float)numbers.fetchRow(0).getLong(1);
+            if(PAYLOAD_COUNT > 0){
+                result.addRow(numbers.fetchRow(0).getLong(0)/PAYLOAD_COUNT);
+            }
+        }catch (IndexOutOfBoundsException ioobe){
+
+        }
         return result;
     }
 }
