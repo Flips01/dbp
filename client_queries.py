@@ -9,6 +9,7 @@ def _clear():
     print("\033[H\033[J")
     pass
 
+#Do not try this under windows, it won't work. Unix does though
 def query1():
     dt = getCorrectDate("Enter Time [DD.MM.YYYY HH:MM]: ")
 
