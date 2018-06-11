@@ -84,8 +84,12 @@ def query6():
             if elem[1] in results.keys():
                 results[elem[1]] += elem[0]
 
+    ratio = 0
+    if results["F"] > 0:
+        ratio = float(results["S"]) / float(results["F"])
+    
     print "Syns: %s; Fins: %s; Ratio: %s" %(
-        results["S"], results["F"], float(results["S"]) / float(results["F"])
+        results["S"], results["F"], ratio
     )
 
     client.close()
