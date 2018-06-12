@@ -57,11 +57,11 @@ def query3():
 def query4():
     
     client = get_voltdb_client()
-    proc = VoltProcedure(client, "@AdHoc",[FastSerializer.VOLTTYPE_STRING])
-    result = proc.call(["SELECT * FROM Well_Known_Ports"])
+    proc = VoltProcedure(client, "@AdHoc", [FastSerializer.VOLTTYPE_STRING])
+    result = proc.call(["SELECT DST_IP, Dst_Port FROM Well_Known_Ports ORDER BY INET_ATON(Dst_IP), Dst_Port"])
     client.close()
     for elem in result.tables[0].tuples:
-        print elem[0]
+        print "IP %-16s Port %s" % (elem[0], elem[1])
     pass
 
 def query5():
@@ -74,7 +74,7 @@ def query5():
     result = proc.call([sequence])
     client.close()
     for elem in result.tables[0].tuples:
-        print "Paket %s: %s\n"%(elem[1],elem[2])
+        print "Paket %s: %s"%(elem[1],elem[2])
 
 def query6():
 
