@@ -17,7 +17,7 @@ public class query3 extends VoltProcedure {
     public final SQLStmt selectQuery = new SQLStmt("SELECT * FROM PORT_CONNECTIONS WHERE DST_IP_PORT = ?");
 
     public VoltTable[] run(String dstIP, int dstPort){
-        voltQueueSQL(selectQuery, dstIP+ ":" + dstPort);
+        voltQueueSQL(selectQuery, (dstIP+ ":" + dstPort));
         return voltExecuteSQL();
     }
 

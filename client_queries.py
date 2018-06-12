@@ -48,7 +48,7 @@ def query3():
     port_int = int(raw_input("Enter Port as single Number: "))
     client = get_voltdb_client()
     proc = VoltProcedure(client, "query3", [FastSerializer.VOLTTYPE_STRING, FastSerializer.VOLTTYPE_INTEGER])
-    result =  proc.call([ip_str, port_int])
+    result = proc.call([ip_str, port_int])
     client.close()
     for elem in result.tables[0].tuples:
         print elem
