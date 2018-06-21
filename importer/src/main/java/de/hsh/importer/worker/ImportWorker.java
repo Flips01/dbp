@@ -21,9 +21,11 @@ public class ImportWorker extends Thread {
     private boolean stopped;
     private long processedItems;
 
-    private VoltDBClient dbClient;
+    private Client dbClient;
     private QueryCounter qCounter;
     private SingleInsertManager sInsertManager;
+
+    private boolean isRunning;
 
     public ImportWorker(String import_file, Slice[] slices, VoltDBClient dbClient) {
         this.reader = new DataReader(import_file, slices);
@@ -32,7 +34,7 @@ public class ImportWorker extends Thread {
         this.processedItems = 0;
         this.qCounter = new QueryCounter();
         this.sInsertManager = new SingleInsertManager();
-        this.dbClient = dbClient;
+        this.dbClient = dbClient.get();
     }
 
     public void handlePackage(Package p) {
@@ -44,7 +46,7 @@ public class ImportWorker extends Thread {
             String connectionID = UUID.randomUUID().toString();
             int partitionKey = Misc.partitionTs(p.getTs(), 600);
 
-            this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "CONNECTIONS.insert",
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter), "CONNECTIONS.insert",
                 partitionKey,
                 connectionID,
                 new TimestampType(new Date(p.msFromEpoch())),
@@ -55,14 +57,14 @@ public class ImportWorker extends Thread {
                 p.getFlag()
             );
 
-            this.dbClient.get().callProcedure(new CounterCallback(this.qCounter),"PAYLOAD.insert",
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"PAYLOAD.insert",
                     partitionKey,
                     connectionID,
                     p.getPayload()
             );
 
             if(this.sInsertManager.canInsert("PORT_CONNECTIONS.insert", p.getDstIP()+":"+p.getDstPort(), p.getSrcIP())) {
-                this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "PORT_CONNECTIONS.insert",
+                this.dbClient.callProcedure(new CounterCallback(this.qCounter), "PORT_CONNECTIONS.insert",
                         p.getDstIP()+":"+p.getDstPort(),
                         p.getSrcIP()
                 );
@@ -70,14 +72,14 @@ public class ImportWorker extends Thread {
 
             if(WKPQuery.getInstance().isWKP(p.getDstPort())) {
                 if(this.sInsertManager.canInsert("WELL_KNOWN_PORTS.insert", p.getDstIP(), p.getDstPort())) {
-                    this.dbClient.get().callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
+                    this.dbClient.callProcedure(new CounterCallback(this.qCounter), "WELL_KNOWN_PORTS.insert",
                             p.getDstIP(),
                             p.getDstPort()
                     );
                 }
             }
 
-            this.dbClient.get().callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
+            this.dbClient.callProcedure(new CounterCallback(this.qCounter),"UpsertAverageDataVolume",
                 p.getSrcIP(),
                 p.getDstIP(),
                 p.getPayloadSize()
@@ -89,12 +91,14 @@ public class ImportWorker extends Thread {
     }
 
     public void run(){
-        while(!this.stopped || this.reader.isFinished()) {
+        this.isRunning = true;
+        while(!this.stopped && !this.reader.isFinished()) {
             Package[] batch = this.reader.getBatch();
             for(Package p : batch) {
                 this.handlePackage(p);
             }
         }
+        this.isRunning = false;
     }
 
     public void shutdown() {
@@ -123,6 +127,6 @@ public class ImportWorker extends Thread {
     }
 
     public boolean isRunning() {
-        return this.isAlive() || this.getQueueItemsCount() > 0 || this.getQueryCompletionRate() != 1;
+        return this.isRunning || this.getQueueItemsCount() > 0 || this.getQueryCompletionRate() != 100;
     }
 }

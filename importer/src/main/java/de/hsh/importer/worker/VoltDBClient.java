@@ -39,6 +39,9 @@ public class VoltDBClient {
 
         config = new ClientConfig("","");
         config.setTopologyChangeAware(true);
+        config.setHeavyweight(true);
+        config.setMaxOutstandingTxns(100000);
+
         client = ClientFactory.createClient(config);
         try {
             for(Server server : servers) {
